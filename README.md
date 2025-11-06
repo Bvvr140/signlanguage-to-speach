@@ -5,5 +5,5 @@ this repository has 3 branches
    2. Frontend
    3. Backend
 
-For code related to backend use branch "Backend"
-for code related to frontend use branch "Frontend"
+For code related to only backend use branch "Backend"
+For code related to both frontend and backend use branch "Frontend"
