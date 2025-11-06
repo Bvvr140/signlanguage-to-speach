@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Sign2Text - Sign Language to Text Translation</title>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+  <style>
+    body {font-family:'Poppins',sans-serif;background:linear-gradient(to bottom right,#0f2027,#203a43,#2c5364);color:#fff;min-height:100vh;}
+    .navbar{background:rgba(0,0,0,0.7);backdrop-filter:blur(10px);}
+    .hero{padding:100px 0 50px 0;text-align:center;}
+    .hero h1{font-weight:700;font-size:3rem;}
+    .hero p{font-size:1.2rem;color:#ddd;}
+    #videoFeed{max-width:700px;width:100%;border:4px solid #fff;border-radius:10px;box-shadow:0px 5px 20px rgba(0,0,0,0.5);}
+    .controls{margin-top:20px;display:flex;justify-content:center;gap:15px;flex-wrap:wrap;}
+    .form-control{max-width:400px;}
+    .carousel-inner img{border-radius:10px;border:3px solid #fff;}
+    footer{background:#000;color:#aaa;text-align:center;padding:20px 0;margin-top:50px;}
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+    <div class="container">
+      <a class="navbar-brand fw-bold" href="#">Sign2Text</a>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container">
+      <h1>Sign2Text</h1>
+      <p>Real-time Sign Language to Text and Speech Conversion</p>
+    </div>
+  </section>
+
+  <!-- Video Feed -->
+  <div class="container video-container text-center">
+    <img id="videoFeed" src="{{ url_for('video_feed') }}" alt="Live Video Feed" />
+    <div class="controls">
+      <input type="text" id="translatedText" class="form-control" placeholder="Translated text will appear here" readonly />
+      <button id="resetButton" class="btn btn-danger"><i class="bi bi-x-circle"></i> Reset</button>
+      <button id="speakButton" class="btn btn-primary"><i class="bi bi-volume-up"></i> Speak</button>
+    </div>
+  </div>
+
+  <!-- Gesture Reference Carousel -->
+  <div class="container my-5">
+    <h2 class="text-center mb-4">Sign Language Reference</h2>
+    <div id="carouselGestures" class="carousel slide" data-bs-interval="false">
+      <div class="carousel-inner">
+        <div class="carousel-item active">
+          <img src="https://raw.githubusercontent.com/uzibytes/Sign2Text/master/hand-signs-of-the-ASL-Language.png"
+               class="d-block w-100" alt="ASL Hand Signs">
+        </div>
+        <div class="carousel-item">
+          <img src="https://raw.githubusercontent.com/uzibytes/sign2text/refs/heads/master/sign%20language%202.jpg"
+               class="d-block w-100" alt="Custom Sign Language Chart">
+        </div>
+        <div class="carousel-item">
+          <img src="https://raw.githubusercontent.com/krishnaraj12/project/main/img/signs3.jpg"
+               class="d-block w-100" alt="Gesture Examples">
+        </div>
+      </div>
+      <button class="carousel-control-prev" type="button" data-bs-target="#carouselGestures" data-bs-slide="prev">
+        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+      </button>
+      <button class="carousel-control-next" type="button" data-bs-target="#carouselGestures" data-bs-slide="next">
+        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Project Guide -->
+  <div class="container my-5 text-center">
+    <h2 class="text-center mb-4">Project Guide</h2>
+    <img src="https://raw.githubusercontent.com/krishnaraj12/project/main/img/Shashi.png"
+         alt="Guide" style="width:150px;height:150px;border-radius:50%;border:3px solid #fff;">
+    <h5 class="mt-3">Project Guide</h5>
+    <p>Department of Computer Science & Engineering</p>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <p>&copy; 2024 Sign2Text. All Rights Reserved.</p>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+  <script>
+    const socket = io();
+    const translatedTextInput = document.getElementById('translatedText');
+    const resetButton = document.getElementById('resetButton');
+    const speakButton = document.getElementById('speakButton');
+    let lastSpoken = "";
+    let speechEnabled = false;
+
+    // Enable speech after user interacts
+    function enableSpeech() {
+      if (!speechEnabled) {
+        const utter = new SpeechSynthesisUtterance("Speech enabled");
+        speechSynthesis.speak(utter);
+        speechEnabled = true;
+        console.log("✅ Speech synthesis enabled");
+      }
+    }
+
+    document.body.addEventListener("click", enableSpeech, { once: true });
+    document.body.addEventListener("keydown", enableSpeech, { once: true });
+
+    // Receive predictions from backend
+    socket.on("prediction", (data) => {
+      if (data && data.text) {
+        const text = data.text;
+        const confidence = (data.confidence * 100).toFixed(1);
+        translatedTextInput.value = `${text} (${confidence}%)`;
+
+        // Auto-speak when confident
+        if (speechEnabled && text !== lastSpoken && confidence > 80) {
+          lastSpoken = text;
+          const utter = new SpeechSynthesisUtterance(text);
+          utter.rate = 1.0;
+          utter.pitch = 1.0;
+          speechSynthesis.speak(utter);
+        }
+      }
+    });
+
+    // Reset
+    resetButton.addEventListener("click", () => {
+      translatedTextInput.value = "";
+      lastSpoken = "";
+    });
+
+    // Manual Speak
+    speakButton.addEventListener("click", () => {
+      const text = translatedTextInput.value.split("(")[0].trim();
+      if (text !== "") {
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.rate = 1.0;
+        utter.pitch = 1.0;
+        speechSynthesis.speak(utter);
+      }
+    });
+  </script>
+</body>
+</html>
